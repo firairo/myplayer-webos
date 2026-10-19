@@ -1,0 +1,9 @@
+{
+  "services": [{
+    "name": "com.example.vlcwebos.service",
+    "description": "Локальный листинг файлов и раздача/транскод видео для MyPlayer",
+    "commands": [
+      { "name": "listDir", "description": "Список файлов и папок по пути", "public": true }
+    ]
+  }]
+}

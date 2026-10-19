@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>MyPlayer</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- Главный экран -->
+  <div id="screen-home" class="screen active">
+    <h1 class="logo">MyPlayer</h1>
+
+    <div class="menu" id="main-menu">
+      <button class="menu-item" data-focusable data-action="open-url">Открыть по ссылке (URL / HLS)</button>
+      <button class="menu-item" data-focusable data-action="open-browser">Локальные файлы (USB)</button>
+
+      <div class="menu-title">Диагностика видео (тест-картинку рисует ffmpeg)</div>
+      <button class="menu-item small" data-focusable data-action="test-h264-frag">Тест A: H.264, потоком (fMP4)</button>
+      <button class="menu-item small" data-focusable data-action="test-h264-file">Тест B: H.264, обычный MP4-файл</button>
+      <button class="menu-item small" data-focusable data-action="test-hevc-frag">Тест C: HEVC 10-бит, потоком (fMP4)</button>
+    </div>
+
+    <div id="url-form" class="url-form hidden">
+      <input type="text" id="url-input" data-focusable placeholder="https://... или .m3u8" />
+      <button class="menu-item" id="url-play-btn" data-focusable data-action="play-url">Воспроизвести</button>
+      <button class="menu-item" data-focusable data-action="cancel-url">Отмена</button>
+    </div>
+  </div>
+
+  <!-- Экран файлового браузера -->
+  <div id="screen-browser" class="screen">
+    <div class="breadcrumb" id="breadcrumb">/</div>
+    <div class="file-list" id="file-list"></div>
+    <div class="hint">Backspace/Back — назад &nbsp;·&nbsp; OK/Enter — выбрать</div>
+  </div>
+
+  <!-- Экран плеера -->
+  <div id="screen-player" class="screen">
+    <video id="video" preload="auto"></video>
+    <div id="debug" class="debug"></div>
+
+    <!-- Диалог выбора дорожки / субтитров -->
+    <div id="track-dialog" class="track-dialog hidden">
+      <div class="track-dialog-title" id="track-dialog-title">Выбор дорожки</div>
+      <div class="track-list" id="track-list"></div>
+      <div class="hint" style="margin-top:16px">Back — закрыть &nbsp;·&nbsp; OK — выбрать</div>
+    </div>
+
+    <div id="controls" class="controls">
+      <div class="progress-row">
+        <span id="time-current">00:00</span>
+        <input type="range" id="seek" min="0" max="1000" value="0" data-focusable />
+        <span id="time-duration">00:00</span>
+      </div>
+      <div class="buttons-row">
+        <button class="ctl-btn" id="btn-playpause" data-focusable data-action="toggle-play">⏯</button>
+        <button class="ctl-btn" data-focusable data-action="seek-back">⏪ 10с</button>
+        <button class="ctl-btn" data-focusable data-action="seek-fwd">10с ⏩</button>
+        <button class="ctl-btn" data-focusable data-action="audio-track">🎵 Дорожка</button>
+        <button class="ctl-btn" data-focusable data-action="close-player">✕ Закрыть</button>
+      </div>
+      <div class="filename" id="now-playing"></div>
+    </div>
+  </div>
+
+  <script src="js/luna.js"></script>
+  <script src="js/subtitles.js"></script>
+  <script src="js/remote.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/debug.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

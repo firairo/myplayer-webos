@@ -1,0 +1,14 @@
+{
+  "id": "com.example.vlcwebos",
+  "version": "1.0.0",
+  "vendor": "Homebrew DIY",
+  "type": "web",
+  "main": "index.html",
+  "title": "MyPlayer",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgColor": "#000000",
+  "iconColor": "#000000",
+  "resolution": "1920x1080",
+  "disableBackHistoryAPI": true
+}

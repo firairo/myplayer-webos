@@ -1,0 +1,144 @@
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  width: 1920px; height: 1080px;
+  background: #0b0b0d;
+  color: #eee;
+  font-family: "LG Display", Arial, sans-serif;
+  overflow: hidden;
+}
+
+.screen { display: none; width: 100%; height: 100%; padding: 60px; }
+.screen.active { display: block; }
+
+.logo {
+  font-size: 56px;
+  color: #ff8c00;
+  margin-bottom: 60px;
+}
+
+.menu { display: flex; flex-direction: column; gap: 24px; width: 700px; }
+
+.menu-item {
+  display: block;
+  width: 100%;
+  padding: 24px 32px;
+  font-size: 32px;
+  background: #1c1c22;
+  color: #eee;
+  border: 3px solid transparent;
+  border-radius: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item.focused, .ctl-btn.focused, #url-input.focused, #seek.focused {
+  border-color: #ff8c00;
+  background: #2a2a33;
+}
+
+.url-form { margin-top: 40px; display: flex; flex-direction: column; gap: 20px; width: 900px; }
+.url-form.hidden { display: none; }
+
+#url-input {
+  padding: 20px;
+  font-size: 30px;
+  background: #1c1c22;
+  color: #eee;
+  border: 3px solid #444;
+  border-radius: 10px;
+}
+
+.breadcrumb { font-size: 26px; color: #999; margin-bottom: 30px; word-break: break-all; }
+
+.file-list { display: flex; flex-direction: column; gap: 10px; max-height: 850px; overflow-y: auto; }
+
+.file-item {
+  padding: 18px 26px;
+  font-size: 28px;
+  background: #17171b;
+  border: 3px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.file-item.focused { border-color: #ff8c00; background: #23232b; }
+.file-item.is-dir::before { content: "📁 "; }
+.file-item.is-video::before { content: "🎬 "; }
+.file-item.is-sub::before { content: "💬 "; }
+.file-item.is-audio::before { content: "🎵 "; }
+
+.hint { margin-top: 30px; color: #777; font-size: 22px; }
+
+#screen-player { padding: 0; position: relative; background: #000; }
+#video { width: 100%; height: 100%; background: #000; }
+
+.controls {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 30px 60px 50px;
+  background: linear-gradient(to top, rgba(0,0,0,0.85), transparent);
+}
+
+.progress-row { display: flex; align-items: center; gap: 20px; font-size: 26px; margin-bottom: 20px; }
+#seek { flex: 1; height: 12px; }
+
+.buttons-row { display: flex; gap: 20px; }
+.ctl-btn {
+  padding: 16px 28px;
+  font-size: 26px;
+  background: #1c1c22cc;
+  color: #eee;
+  border: 3px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.filename { margin-top: 16px; font-size: 22px; color: #aaa; }
+
+
+/* На webOS видео рисуется на аппаратном слое ПОД веб-страницей.
+   Если страница закрашена непрозрачным фоном — слышен звук, а картинки нет.
+   На время воспроизведения делаем всё прозрачным. */
+html.playing, html.playing body,
+html.playing #screen-player,
+html.playing #video {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.menu-title { margin-top: 18px; font-size: 22px; color: #888; }
+.menu-item.small { padding: 14px 28px; font-size: 26px; }
+.menu { gap: 16px; }
+
+.debug {
+  position: absolute; top: 8px; left: 8px;
+  width: 1500px; max-height: 1064px; overflow: hidden;
+  padding: 10px 14px;
+  font-size: 17px; line-height: 1.28;
+  font-family: monospace;
+  color: #0f0; background: rgba(0, 0, 0, 0.78);
+  white-space: pre-wrap; word-break: break-all;
+  z-index: 10;
+}
+.debug.hidden { display: none; }
+
+.track-dialog {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 900px; max-height: 800px;
+  background: #13131a; border: 3px solid #ff8c00;
+  border-radius: 16px; padding: 40px 48px;
+  z-index: 20; overflow-y: auto;
+}
+.track-dialog.hidden { display: none; }
+.track-dialog-title { font-size: 34px; color: #ff8c00; margin-bottom: 24px; }
+.track-list { display: flex; flex-direction: column; gap: 12px; }
+.track-item {
+  padding: 18px 24px; font-size: 28px;
+  background: #1c1c22; border: 3px solid transparent;
+  border-radius: 10px; cursor: pointer;
+}
+.track-item.focused { border-color: #ff8c00; background: #2a2a33; }
+.track-item.active-track { color: #ff8c00; }
