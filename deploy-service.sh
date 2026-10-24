@@ -46,5 +46,11 @@ scp_run "$PROJECT_DIR/tv-service/service.js" "$REMOTE_SERVICE_DIR/service.js"
 scp_run "$PROJECT_DIR/tv-service/restart-service.sh" "$REMOTE_SERVICE_DIR/restart-service.sh"
 ssh_run "chmod +x '$REMOTE_SERVICE_DIR/restart-service.sh'"
 
+# Копируем .env если он существует
+if [ -f "$PROJECT_DIR/tv-service/.env" ]; then
+  step "Копирую .env"
+  scp_run "$PROJECT_DIR/tv-service/.env" "$REMOTE_SERVICE_DIR/.env"
+fi
+
 step "Перезапускаю сервис на TV (весь вывод ниже — от самого TV)"
 ssh_run "sh '$REMOTE_SERVICE_DIR/restart-service.sh'"

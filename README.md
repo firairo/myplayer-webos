@@ -74,12 +74,39 @@ webos-vlc-player/
    ```bash
    ssh root@192.168.0.144 'mount | grep -i usb; ls -la /tmp/usb 2>/dev/null; ls -la /media 2>/dev/null'
    ```
-3. Поправьте список `ROOTS` в `tv-service/service.js` под то, что
+3. **Вариант А (рекомендуется)**: задайте пути через переменные окружения в `deploy-service.sh`:
+   ```bash
+   MYPLAYER_ROOTS="/tmp/usb:/media" ./deploy-service.sh 192.168.0.144
+   ```
+4. **Вариант Б**: поправьте список `ROOTS` в `tv-service/service.js` под то, что
    реально увидели, и перезалейте: `./deploy-service.sh 192.168.0.144`.
-4. Проверить сервис напрямую, не через приложение:
+5. Проверить сервис напрямую, не через приложение:
    ```bash
    ssh root@192.168.0.144 'curl -s http://127.0.0.1:7788/listDir'
    ```
+
+## Настройка через переменные окружения
+
+Сервис поддерживает настройку через переменные окружения:
+
+- `MYPLAYER_PORT` — порт (по умолчанию 7788)
+- `MYPLAYER_FFMPEG` — путь к ffmpeg (по умолчанию `/home/root/bin/ffmpeg`)
+- `MYPLAYER_FFPROBE` — путь к ffprobe (по умолчанию `/home/root/bin/ffprobe`)
+- `MYPLAYER_ROOTS` — корневые директории для доступа к файлам, через `:` (по умолчанию `/tmp/usb`)
+- `MYPLAYER_MAX_WIDTH` — максимальная ширина при транскодировании (по умолчанию 99999)
+- `MYPLAYER_FORCE_REENCODE` — принудительно перекодировать 10-бит в 8-бит (по умолчанию false)
+
+**Способ 1 — через .env файл (рекомендуется):**
+```bash
+cp tv-service/.env.example tv-service/.env
+# отредактируйте tv-service/.env под вашу систему
+./deploy-service.sh 192.168.0.144
+```
+
+**Способ 2 — через переменные окружения при запуске:**
+```bash
+MYPLAYER_ROOTS="/tmp/usb:/media" MYPLAYER_FFMPEG="/usr/bin/ffmpeg" node service.js
+```
 
 ## Транскодирование (ffmpeg) — по-прежнему нужно на TV
 

@@ -21,20 +21,20 @@ const url = require('url');
 const os = require('os');
 const { spawn, execFileSync } = require('child_process');
 
-const PORT = 7788;
+const PORT = process.env.MYPLAYER_PORT || 7788;
 const STARTED_AT = Date.now();
 
-const FFMPEG_PATH = '/home/root/bin/ffmpeg';
-const FFPROBE_PATH = '/home/root/bin/ffprobe';
+const FFMPEG_PATH = process.env.MYPLAYER_FFMPEG || '/home/root/bin/ffmpeg';
+const FFPROBE_PATH = process.env.MYPLAYER_FFPROBE || '/home/root/bin/ffprobe';
 
 // Максимальная ширина видео при перекодировании (99999 = без ограничения).
-const TRANSCODE_MAX_WIDTH = 99999;
+const TRANSCODE_MAX_WIDTH = process.env.MYPLAYER_MAX_WIDTH ? parseInt(process.env.MYPLAYER_MAX_WIDTH, 10) : 99999;
 
 // Телевизоры LG аппаратно декодируют 10-бит HEVC/HDR сами — по умолчанию
 // такое видео просто копируем. true = принудительно перекодировать в 8-бит H.264.
-const FORCE_REENCODE_HIGH_BIT_DEPTH = false;
+const FORCE_REENCODE_HIGH_BIT_DEPTH = process.env.MYPLAYER_FORCE_REENCODE === 'true';
 
-const ROOTS = ['/tmp/usb'];
+const ROOTS = (process.env.MYPLAYER_ROOTS || '/tmp/usb').split(':').filter(Boolean);
 
 const DIRECT_EXT = new Set(['.mp4', '.m4v', '.mov', '.webm']);
 const NATIVE_VIDEO_CODECS = new Set(['h264', 'hevc']);
@@ -47,6 +47,29 @@ const debugState = {
   ffmpeg: null,   // последний запуск ffmpeg
   direct: null    // последняя раздача файла напрямую
 };
+
+// ---------- валидация путей ----------
+function isValidPath(filePath) {
+  if (!filePath) return false;
+  const resolved = path.resolve(filePath);
+  return ROOTS.some(root => {
+    try {
+      const rootResolved = path.resolve(root);
+      return resolved.startsWith(rootResolved);
+    } catch (e) {
+      return false;
+    }
+  });
+}
+
+function sanitizePath(filePath) {
+  if (!filePath) return null;
+  const resolved = path.resolve(filePath);
+  if (!isValidPath(resolved)) {
+    return null;
+  }
+  return resolved;
+}
 
 // ---------- утилиты ----------
 function findUsbMountPoints() {
@@ -112,7 +135,7 @@ function sendJson(res, code, obj) {
 function probeFile(filePath) {
   const raw = execFileSync(FFPROBE_PATH, [
     '-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', filePath
-  ], { maxBuffer: 10 * 1024 * 1024 }).toString();
+  ], { maxBuffer: 10 * 1024 * 1024, timeout: 30000 }).toString();
 
   const data = JSON.parse(raw);
   const allStreams = data.streams || [];
@@ -394,7 +417,12 @@ const server = http.createServer((req, res) => {
       sendJson(res, 200, { entries: mounts.length === 1 ? safeReaddir(mounts[0].path) : mounts });
       return;
     }
-    sendJson(res, 200, { entries: safeReaddir(filePath) });
+    const sanitized = sanitizePath(filePath);
+    if (!sanitized) {
+      sendJson(res, 403, { error: 'Invalid path' });
+      return;
+    }
+    sendJson(res, 200, { entries: safeReaddir(sanitized) });
     return;
   }
 
@@ -439,7 +467,12 @@ const server = http.createServer((req, res) => {
   if (parsed.pathname === '/probe') {
     console.log('[probe] path=' + filePath);
     if (!filePath) { sendJson(res, 400, { error: 'Missing path' }); return; }
-    const extIsDirect = DIRECT_EXT.has(path.extname(filePath).toLowerCase());
+    const sanitized = sanitizePath(filePath);
+    if (!sanitized) {
+      sendJson(res, 403, { error: 'Invalid path' });
+      return;
+    }
+    const extIsDirect = DIRECT_EXT.has(path.extname(sanitized).toLowerCase());
 
     if (!ffprobeAvailable()) {
       sendJson(res, 200, {
@@ -449,12 +482,12 @@ const server = http.createServer((req, res) => {
       return;
     }
     try {
-      const info = probeFile(filePath);
-      info.direct = fs.existsSync(filePath) ? isDirectPlayable(filePath, info) : false;
+      const info = probeFile(sanitized);
+      info.direct = fs.existsSync(sanitized) ? isDirectPlayable(sanitized, info) : false;
       if (info.direct) {
         info.plan = { kind: 'direct (файл отдаётся как есть, Range)', cmd: null };
       } else if (ffmpegAvailable()) {
-        const plan = buildPlan(filePath, info, 0);
+        const plan = buildPlan(sanitized, info, 0);
         info.plan = { kind: plan.kind, cmd: 'ffmpeg ' + plan.args.join(' ') };
       } else {
         info.warning = 'Нужен транскод, но ffmpeg не найден на TV';
@@ -471,13 +504,18 @@ const server = http.createServer((req, res) => {
 
   if (parsed.pathname === '/subtitle') {
     if (!filePath) { sendJson(res, 400, { error: 'Missing path' }); return; }
+    const sanitized = sanitizePath(filePath);
+    if (!sanitized) {
+      sendJson(res, 403, { error: 'Invalid path' });
+      return;
+    }
     const sidx = parsed.query.index;
     if (!sidx) { sendJson(res, 400, { error: 'Missing index' }); return; }
     if (!ffmpegAvailable()) { res.writeHead(500); res.end('ffmpeg not found'); return; }
 
     // ffmpeg не умеет писать WebVTT в pipe (non-seekable) — пишем во временный файл
     const tmpVtt = '/tmp/vlcwebos_sub_' + Date.now() + '.vtt';
-    const args = ['-nostdin', '-hide_banner', '-y', '-i', filePath, '-map', '0:' + sidx, '-c:s', 'webvtt', tmpVtt];
+    const args = ['-nostdin', '-hide_banner', '-y', '-i', sanitized, '-map', '0:' + sidx, '-c:s', 'webvtt', tmpVtt];
     console.log('[subtitle] конвертирую дорожку ' + sidx + ' -> ' + tmpVtt);
     const ff = spawn(FFMPEG_PATH, args);
     let ffErr = '';
@@ -507,10 +545,15 @@ const server = http.createServer((req, res) => {
 
   if (parsed.pathname === '/tracks') {
     if (!filePath) { sendJson(res, 400, { error: 'Missing path' }); return; }
-    console.log('[tracks] path=' + filePath);
+    const sanitized = sanitizePath(filePath);
+    if (!sanitized) {
+      sendJson(res, 403, { error: 'Invalid path' });
+      return;
+    }
+    console.log('[tracks] path=' + sanitized);
     if (!ffprobeAvailable()) { sendJson(res, 200, { audio: [], subs: [] }); return; }
     try {
-      const info = probeFile(filePath);
+      const info = probeFile(sanitized);
       const audio = (info.streams || [])
         .filter((s) => s.t === 'audio')
         .map((s) => ({ index: s.i, codec: s.c, channels: s.ch, layout: s.layout, lang: s.lang, label: [s.lang, s.c, s.layout].filter(Boolean).join(' ') }));
@@ -529,12 +572,18 @@ const server = http.createServer((req, res) => {
   if (parsed.pathname === '/stream') {
     console.log('[stream] path=' + filePath + ' start=' + (parsed.query.start || '0') + ' range=' + (req.headers.range || '-'));
     if (!filePath) { res.writeHead(400); res.end('Missing path'); return; }
+    const sanitized = sanitizePath(filePath);
+    if (!sanitized) {
+      res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Invalid path');
+      return;
+    }
 
     const startSec = parseFloat(parsed.query.start || '0') || 0;
     const audioIndex = parsed.query.aid !== undefined ? parseInt(parsed.query.aid, 10) : null;
     const subIndex = parsed.query.sid !== undefined ? parseInt(parsed.query.sid, 10) : null;
-    const localFile = fs.existsSync(filePath);
-    const ext = path.extname(filePath).toLowerCase();
+    const localFile = fs.existsSync(sanitized);
+    const ext = path.extname(sanitized).toLowerCase();
     const extIsDirect = DIRECT_EXT.has(ext);
     const hasStart = !!(parsed.query.start || parsed.query.aid !== undefined || parsed.query.sid !== undefined);
 
@@ -544,27 +593,27 @@ const server = http.createServer((req, res) => {
       if (!ffprobeAvailable()) {
         direct = extIsDirect;
       } else {
-        try { info = probeFile(filePath); direct = isDirectPlayable(filePath, info); }
+        try { info = probeFile(sanitized); direct = isDirectPlayable(sanitized, info); }
         catch (e) { direct = extIsDirect; }
       }
     }
 
-    if (direct) { serveFileRange(req, res, filePath, mimeFor(ext)); return; }
+    if (direct) { serveFileRange(req, res, sanitized, mimeFor(ext)); return; }
 
     if (!ffmpegAvailable()) {
       res.writeHead(415, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('Этот формат требует ffmpeg на TV, а он не найден: ' + FFMPEG_PATH);
       return;
     }
-    if (!info) { try { info = probeFile(filePath); } catch (e) { info = null; } }
+    if (!info) { try { info = probeFile(sanitized); } catch (e) { info = null; } }
 
-    const plan = buildPlan(filePath, info, startSec, audioIndex, subIndex);
+    const plan = buildPlan(sanitized, info, startSec, audioIndex, subIndex);
     if (!plan.args) {
       res.writeHead(415, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ error: plan.kind, vcodec: info ? info.vcodec : null }));
       return;
     }
-    runFfmpeg(req, res, plan.args, { kind: plan.kind, path: filePath, needsBuffer: plan.needsBuffer });
+    runFfmpeg(req, res, plan.args, { kind: plan.kind, path: sanitized, needsBuffer: plan.needsBuffer });
     return;
   }
 
