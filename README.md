@@ -108,6 +108,20 @@ cp tv-service/.env.example tv-service/.env
 MYPLAYER_ROOTS="/tmp/usb:/media" MYPLAYER_FFMPEG="/usr/bin/ffmpeg" node service.js
 ```
 
+## Мониторинг памяти
+
+Сервис автоматически контролирует использование памяти и запускает garbage collection при превышении 200 MB. Статистику памяти можно посмотреть через эндпоинт `/debug`:
+
+```bash
+curl http://127.0.0.1:7788/debug
+```
+
+Ответ включает:
+- `service.memory.heapUsed` - используемая heap память в MB
+- `service.memory.heapTotal` - выделенная heap память в MB
+- `service.memory.rss` - общая память процесса в MB
+- `service.memory.external` - внешняя память (C++ объекты) в MB
+
 ## Транскодирование (ffmpeg) — по-прежнему нужно на TV
 
 - Нужен реальный бинарник `ffmpeg`/`ffprobe` на TV — у меня нет

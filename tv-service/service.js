@@ -48,6 +48,18 @@ const debugState = {
   direct: null    // последняя раздача файла напрямую
 };
 
+// ---------- управление памятью ----------
+const MAX_MEMORY_MB = 200; // максимальная память в MB
+setInterval(() => {
+  const used = process.memoryUsage().heapUsed / 1024 / 1024;
+  if (used > MAX_MEMORY_MB) {
+    console.log('[memory] GC triggered, heap used:', used.toFixed(2), 'MB');
+    if (global.gc) {
+      global.gc();
+    }
+  }
+}, 60000); // проверка каждую минуту
+
 // ---------- валидация путей ----------
 function isValidPath(filePath) {
   if (!filePath) return false;
@@ -448,13 +460,20 @@ const server = http.createServer((req, res) => {
   }
 
   if (parsed.pathname === '/debug') {
+    const mem = process.memoryUsage();
     sendJson(res, 200, {
       service: {
         node: process.version, arch: os.arch(), uptimeSec: Math.round((Date.now() - STARTED_AT) / 1000),
         loadavg: os.loadavg().map((x) => x.toFixed(2)), freeMemMB: Math.round(os.freemem() / 1048576),
         totalMemMB: Math.round(os.totalmem() / 1048576), cpus: os.cpus().length,
         ffmpeg: ffmpegAvailable(), ffprobe: ffprobeAvailable(), ffmpegVersion: FFMPEG_VERSION, nice: NICE_AVAILABLE,
-        forceReencode10bit: FORCE_REENCODE_HIGH_BIT_DEPTH, maxWidth: TRANSCODE_MAX_WIDTH
+        forceReencode10bit: FORCE_REENCODE_HIGH_BIT_DEPTH, maxWidth: TRANSCODE_MAX_WIDTH,
+        memory: {
+          heapUsed: Math.round(mem.heapUsed / 1048576),
+          heapTotal: Math.round(mem.heapTotal / 1048576),
+          rss: Math.round(mem.rss / 1048576),
+          external: Math.round(mem.external / 1048576)
+        }
       },
       ffmpeg: debugState.ffmpeg
         ? Object.assign({}, debugState.ffmpeg, { elapsedSec: Math.round((Date.now() - debugState.ffmpeg.startedAt) / 1000) })
