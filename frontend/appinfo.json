@@ -10,5 +10,6 @@
   "bgColor": "#000000",
   "iconColor": "#000000",
   "resolution": "1920x1080",
-  "disableBackHistoryAPI": true
+  "disableBackHistoryAPI": true,
+  "requiredMemory": 32
 }
